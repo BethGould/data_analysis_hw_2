@@ -1,0 +1,152 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{listings}
+
+\title{Data Analysis, Homework 3}
+
+\author{Elizabeth Gould}
+
+\begin{document}
+
+\maketitle
+
+\section{Compressor Statistics}
+
+\subsection{Issues}
+
+I believe the cycles constant at the end are not recorded properly. Everything else appears to be acceptable. However, occasionally there are problems if something is rare.
+
+\subsection{Texts}
+
+I have 4 texts with which I am working with, after which I need to try something more difficult. 
+
+\begin{enumerate}
+\item With This Ring Season 1: Text has been cleaned. Size is 4115 kB on disk. 
+\item With This Ring Season 2: Text is uncleaned. Size is 5632 kB on disk.
+\item With This Ring Season 2: Text still uncleaned, but one section has been removed. Size is 5632 kB on disk.
+\item With This Ring Season 1 + 2: This is just text 1 and text 3 combined into one file. Size is 9746 kB on disk.
+
+\end{enumerate}
+
+\subsection{Static Machines}
+
+Compressor as of right now only works on the first text. It should be easily alterable to work on the other texts, but I would need to clean the second text, and there is an issue with time requirements.
+
+\begin{itemize}
+\item k = 3
+\item window size = 40 bits
+\item Decapitalization time: 1.5 hours
+\item Decapitalization size: 24 kB
+\item find count time: 1.5 hours, of which ~20 min actually unnecessary
+\item find count size: 89 kB on disk
+\item encryption time: 3 hours, but less for an alternative counter
+\item encryption size: 1012 kB
+\item full encryption size: 1170 kB?
+\item full decryption time: 70 min almost all of which are decryption
+\end{itemize}
+
+The long time here compared to the short time for the dynamic code indicates an inefficiency in the code. I have very little desire to find it, but the only difference is how the counts are stored, so it seems a recursive storage is best. I believe I can search the code in a single pass for better efficiency for decapitalization and find counts.
+
+The old method for storing the encoder array took ~20 minutes to encode. I think searching the long arrays is inefficient. If I need to rerun this, I will try to clear the inefficiencies.
+
+
+\section{Comparison to Static Machines}
+
+For text 2, N = 64 too small. I found a chunk of text strangely written (ultra rare). I think I can do something to deal with this, but I am not sure on my energy level right now. I deleted the problematic part of the text and tried again. However, I think it is possible to come up with an alternate workaround (or maybe one of the alternatives works). 
+
+For text 4, as I suspected, the decoder reaches a problem at the first non-ascii character.
+
+
+\begin{itemize}
+\item k = 3
+\item window size = 64 bits
+\item encoder time, text1: 3 min
+\item decoder time, text1: 4.5 min
+\item size text1: 1181 kB
+\item encoder time, text3: 5+ min
+\item decoder time, text3: 6-10 min
+\item size text3: 1575 kB
+\end{itemize}
+
+
+
+\section{Update Exclusions}
+
+So far, doesn't seem faster, but might save some on size. It bypasses the problem with decoding ultra-rare cases, but for text2, I encountered the end of file issue. Manually telling it to decode the last four characters returns the original text, so it is just stopping at the wrong place. Text1 has an end of file issue of 1 character.
+
+The decoder is still failing at the first non-ascii character for text 4.
+
+\begin{itemize}
+\item k = 2
+\item window size = 64 bits
+\item encoder time, text1: 3 min
+\item decoder time, text1: 5.5 min
+\item size text1: 1442 kB
+\item encoder time, decap: 2.7 min
+\item decoder time, decap: 5 min
+\item size decap: 1437 kB
+\end{itemize}
+
+\begin{itemize}
+\item k = 3
+\item window size = 64 bits
+\item encoder time, text1: 3 min
+\item decoder time, text1: 5 min
+\item size text1: 1165
+\item encoder time, text2: 4.5 min
+\item decoder time, text2: 8 min
+\item size text2: 1557 kB
+\item encoder time, text3: 4.5 min
+\item decoder time, text3: 7.5 min
+\item size text3: 1556 kB
+\item encoder time, decap: 3 min
+\item decoder time, decap: 5 min
+\item size decap: 1190498
+\end{itemize}
+
+\begin{itemize}
+\item k = 4
+\item window size = 64 bits
+\item encoder time, text1: 3.5 min
+\item decoder time, text1: 5 min
+\item size text1: 1035 kB
+\item encoder time, decap: 4 min
+\item decoder time, decap: 6 min
+\item size decap: 1057195
+\end{itemize}
+
+\begin{itemize}
+\item k = 5
+\item window size = 64 bits
+\item encoder time, text1: 4 min
+\item decoder time, text1: 6 min
+\item size text1: 994 kB
+\item encoder time, decap: 4.5 min
+\item decoder time, decap: 5.5 min
+\item size decap: 1012264
+\end{itemize}
+
+\begin{itemize}
+\item k = 6
+\item window size = 64 bits
+\item encoder time, text1: 6 min
+\item decoder time, text1: 8 min
+\item size text1: 989 kB
+\item encoder time, decap: 5
+\item decoder time, decap: 6.5 min
+\item size decap: 1004875
+\end{itemize}
+
+\section{Choice of First Model}
+
+\section{Code}
+
+\subsection{File Format}
+
+\subsection{Encoder}
+
+\subsection{Decoder}
+
+
+\end{document}
