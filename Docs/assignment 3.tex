@@ -15,17 +15,23 @@
 
 \subsection{Issues}
 
-I believe the cycles constant at the end are not recorded properly. Everything else appears to be acceptable. However, occasionally there are problems if something is rare.
+I have so far found 2 issues, but I don't have the time to fix them, and they don't need to be fixed to get statistics.
+\begin{enumerate}
+\item The number of cycles where the last bit doesn't change at the end is not being read properly. I do have an accounting for the end of stream, it just doesn't work properly. The problem is not always obvious. 
+\item If there is an extremely rare character or context, the character will not be correctly read, after which the decoder will soon encounter an error. I believe I know what the problem is and how to fix it, but it will require more time than I have.
+\end{enumerate}
 
-\subsection{Texts}
-
-I have 4 texts with which I am working with, after which I need to try something more difficult. 
+\subsection{Texts} 
 
 \begin{enumerate}
 \item With This Ring Season 1: Text has been cleaned. Size is 4115 kB on disk. 
 \item With This Ring Season 2: Text is uncleaned. Size is 5632 kB on disk.
 \item With This Ring Season 2: Text still uncleaned, but one section has been removed. Size is 5632 kB on disk.
 \item With This Ring Season 1 + 2: This is just text 1 and text 3 combined into one file. Size is 9746 kB on disk.
+\item With This Ring Season 1: Decapitalized version of the text. It is actually not saved to disk, as it is easy to produce in Python.
+\item With This Ring Season 1: Reversed version of the text. It is actually not saved to disk, as it is easy to produce in Python.
+\item With This Ring Season 1: Decapitalized and reverse version of the text. It is actually not saved to disk, as it is easy to produce in Python.
+
 
 \end{enumerate}
 
@@ -42,7 +48,6 @@ Compressor as of right now only works on the first text. It should be easily alt
 \item find count size: 89 kB on disk
 \item encryption time: 3 hours, but less for an alternative counter
 \item encryption size: 1012 kB
-\item full encryption size: 1170 kB?
 \item full decryption time: 70 min almost all of which are decryption
 \end{itemize}
 
@@ -51,7 +56,7 @@ The long time here compared to the short time for the dynamic code indicates an 
 The old method for storing the encoder array took ~20 minutes to encode. I think searching the long arrays is inefficient. If I need to rerun this, I will try to clear the inefficiencies.
 
 
-\section{Comparison to Static Machines}
+\subsection{Dynamic Machines without Masking}
 
 For text 2, N = 64 too small. I found a chunk of text strangely written (ultra rare). I think I can do something to deal with this, but I am not sure on my energy level right now. I deleted the problematic part of the text and tried again. However, I think it is possible to come up with an alternate workaround (or maybe one of the alternatives works). 
 
@@ -71,82 +76,111 @@ For text 4, as I suspected, the decoder reaches a problem at the first non-ascii
 
 
 
-\section{Update Exclusions}
+\subsection{Dynamic Machines with Masking (Update Exclusions)}
 
-So far, doesn't seem faster, but might save some on size. It bypasses the problem with decoding ultra-rare cases, but for text2, I encountered the end of file issue. Manually telling it to decode the last four characters returns the original text, so it is just stopping at the wrong place. Text1 has an end of file issue of 1 character.
+In this section, I added masking of characters which we already ruled out. So far, doesn't seem faster, but might save some on size. It bypasses the problem with decoding ultra-rare cases, but for text2, I encountered the end of file issue. Manually telling it to decode the last four characters returns the original text, so it is just stopping at the wrong place. Text1 has an end of file issue of 1 character. I stopped looking for this afterwords. The data is in table 1.
 
-The decoder is still failing at the first non-ascii character for text 4.
+The decoder is still failing at the first non-ascii character for text 4. This may require the second fix which I noted in the issues section.
 
-\begin{itemize}
-\item k = 2
-\item window size = 64 bits
-\item encoder time, text1: 3 min
-\item decoder time, text1: 5.5 min
-\item size text1: 1442 kB
-\item encoder time, decap: 2.7 min
-\item decoder time, decap: 5 min
-\item size decap: 1437 kB
-\end{itemize}
+k = 6 appears to be the best variant from the table, but k = 5 is not much worse and faster.
 
-\begin{itemize}
-\item k = 3
-\item window size = 64 bits
-\item encoder time, text1: 3 min
-\item decoder time, text1: 5 min
-\item size text1: 1165
-\item encoder time, text2: 4.5 min
-\item decoder time, text2: 8 min
-\item size text2: 1557 kB
-\item encoder time, text3: 4.5 min
-\item decoder time, text3: 7.5 min
-\item size text3: 1556 kB
-\item encoder time, decap: 3 min
-\item decoder time, decap: 5 min
-\item size decap: 1190498
-\end{itemize}
 
-\begin{itemize}
-\item k = 4
-\item window size = 64 bits
-\item encoder time, text1: 3.5 min
-\item decoder time, text1: 5 min
-\item size text1: 1035 kB
-\item encoder time, decap: 4 min
-\item decoder time, decap: 6 min
-\item size decap: 1057195
-\end{itemize}
 
-\begin{itemize}
-\item k = 5
-\item window size = 64 bits
-\item encoder time, text1: 4 min
-\item decoder time, text1: 6 min
-\item size text1: 994 kB
-\item encoder time, decap: 4.5 min
-\item decoder time, decap: 5.5 min
-\item size decap: 1012264
-\end{itemize}
+\begin{table}[]
+\caption{Encoding an decoding time and space requirements based on text and maximum length of context.}
+\label{big}
+\begin{tabular}{|l|l|l|l|l|l|l|}
+\hline
+\textbf{}      & \textbf{Text 1}  & \textbf{Text 2} & \textbf{Text 3} & 
+\textbf{Reverse} & \textbf{Decap} & \textbf{Decap Rev} \\ \hline
+\textbf{find\_k k} &k=4&k=4&k=& k=8&k=4&k=8\\ \hline
+\textbf{k=2}     & 
+\begin{tabular}[c]{@{}l@{}}1476416\\ 3 m 23.8s\\ 5m 23.1s\end{tabular} &
+\begin{tabular}[c]{@{}l@{}}1990550\\4m 32.5s\\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1990215\\ 4m 57.6s\\9m 7.4s\end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1476623\\ 2m 52.5s\\ 5m 11.9s\end{tabular}   &
+\begin{tabular}[c]{@{}l@{}}1470545\\ 3m 14 s\\ 4m 37.9s \end{tabular}&                
+\begin{tabular}[c]{@{}l@{}}1470470\\ 3m 32.9s \\ 7m 28.3s \end{tabular} \\ \hline
+\textbf{k=3}       &
+\begin{tabular}[c]{@{}l@{}}1192730\\ 3 m 9.2s\\ 4m 50.1s\end{tabular} &
+\begin{tabular}[c]{@{}l@{}}1593626\\ 4m 13.5s\\ 6m 50.7s\end{tabular}     &      
+\begin{tabular}[c]{@{}l@{}}1593289\\ 5m 29.2s\\ 7m 14.1s \end{tabular}   & 
+\begin{tabular}[c]{@{}l@{}}1193200\\ 3m 6.0 s\\ 5m 3.6 s\end{tabular}   &                   
+\begin{tabular}[c]{@{}l@{}}1190498\\ 2m 48.7s\\ 4m 28.7s \end{tabular}& 
+\begin{tabular}[c]{@{}l@{}}1190568\\ 4m 12.8s \\ 6m 27.3s \end{tabular}\\ \hline
+\textbf{k=4}       &
+\begin{tabular}[c]{@{}l@{}}1058909\\ 3m 36.6s\\ 5m 29.3s \end{tabular} & 
+\begin{tabular}[c]{@{}l@{}}1399465\\   \\ \end{tabular}&     
+\begin{tabular}[c]{@{}l@{}}1399128\\  6m 6.4s\\9m 46.1s\end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1059650\\ 3m 55.0s\\ 6m 6.1s\end{tabular}    &                   
+\begin{tabular}[c]{@{}l@{}}1057195\\ 3m 25.5s\\ 5m 4.1s\end{tabular}&                          
+\begin{tabular}[c]{@{}l@{}}1057632\\ 4m 54s  \\ 7m 20.7s\end{tabular}\\ \hline
+\textbf{k=5}       &
+\begin{tabular}[c]{@{}l@{}}1017021\\ 4 m 22.6s\\ 6m 2.8s \end{tabular} &
+\begin{tabular}[c]{@{}l@{}}1335544\\   \\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1335207\\7m 32.5s\\10m 49.4s\end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1018142\\ 5m 1.3s\\ 7m 20.3s\end{tabular}    &
+\begin{tabular}[c]{@{}l@{}}1012264\\ 3 m 51.6s\\ 5m 17.3s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1013437\\  6m 21.1s \\6m 47.7s\end{tabular}\\ \hline
+\textbf{k=6}&
+\begin{tabular}[c]{@{}l@{}}1012453\\ 6 m 10.6s\\ 6m 34.5s\end{tabular} &
+\begin{tabular}[c]{@{}l@{}}1325093\\   \\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1324756\\8m 27.2s\\10m 11.2s\end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1013572\\ 6m 11.2s\\ 8m 32.9s\end{tabular}   &
+\begin{tabular}[c]{@{}l@{}}1004875\\ 5 m 24.5s\\ 6m 43.4s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1007044\\ 5m 38.3s  \\7m 1.8s\end{tabular}\\ \hline
+\textbf{k=7}&
+\begin{tabular}[c]{@{}l@{}}1023743\\6m59.5s\\8m 8.7s\end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1338156\\   \\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1337819\\9m 49.2s\\12m 15.4s\end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1024888\\ 7m 38.6s\\ 9m 12.8s\end{tabular} &                    
+\begin{tabular}[c]{@{}l@{}}1014294\\ 6m 11.5s  \\ 7m 43.6s\end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1018111\\ 6m 37.7s \\ 8m 2.0s\end{tabular}\\ \hline  
+\textbf{k=8} &                
+\begin{tabular}[c]{@{}l@{}}1040281\\8m 14.0s\\10m 29.9s\end{tabular}&                
+\begin{tabular}[c]{@{}l@{}}1359464\\   \\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1359126\\12m 55.5s\\14m 58.7s\end{tabular}& 
+\begin{tabular}[c]{@{}l@{}}1041179\\ 8.5m \\ error\end{tabular}&                    
+\begin{tabular}[c]{@{}l@{}}1029459\\7m 47.5s\\ 8m 50.4s\end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1034963\\7m 48.6s\\ 8m 36.4s\end{tabular}\\ \hline
+\end{tabular}
+\end{table}
 
-\begin{itemize}
-\item k = 6
-\item window size = 64 bits
-\item encoder time, text1: 6 min
-\item decoder time, text1: 8 min
-\item size text1: 989 kB
-\item encoder time, decap: 5
-\item decoder time, decap: 6.5 min
-\item size decap: 1004875
-\end{itemize}
+\subsection{Choice of First Model}
 
-\section{Choice of First Model}
+The data for the probabilities for the probability of the most likely character are given in Table 2. For every step, I found the most likely character out of the remaining characters, adding a character onto the beginning. By the end, my count is only 9.
+I believe that the method I use here to estimate the best k is not the correct version, it is not very useful at all, but every other variant I can think of would run into the time issues of the static machine count, which I was trying to avoid.
 
-\section{Code}
+The current calculation takes 30 seconds.
 
-\subsection{File Format}
+\begin{table}[]
+\caption{Probability of the most frequent character given the most frequent context.}
+\label{probs}
+\begin{center}
 
-\subsection{Encoder}
+\begin{tabular}{|l|l|l|}
+\hline
+k  & Probability & Added Bit \\ \hline
+0  & 0.172       & 32        \\ \hline
+1  & 0.166       & 101       \\ \hline
+2  & 0.327       & 104       \\ \hline
+3  & 0.750       & 116       \\ \hline
+4  & 0.997       & 32        \\ \hline
+5  & 0.153       & 110       \\ \hline
+6  & 0.474       & 105       \\ \hline
+7  & 0.944       & 32        \\ \hline
+8  & 0.191       & 101       \\ \hline
+9  & 0.233       & 114       \\ \hline
+10 & 0.333       & 101       \\ \hline
+11 & 0.566       & 104       \\ \hline
+12 & 0.529       & 119       \\ \hline
+13 & 0.667       & 101       \\ \hline
+\end{tabular}
+\end{center}
 
-\subsection{Decoder}
+\end{table}
+
+\section{Wikipedia Benchmark}
 
 
 \end{document}

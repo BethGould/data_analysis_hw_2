@@ -163,53 +163,36 @@ class arith_code_dec_k:
     def decode_character(self, lib):
         # find the location in the probability space for our byte array window 
         hl1_N = float(self.ho-self.lo+1) / float(self.win_size)
-        #w_pl = (self.window - self.lo) / hl1_N
+        w_pl = (self.window - self.lo) / hl1_N
 
         # find the probabilities of various characters
         lib = self.remove_masked(lib)
         char = -1
-        if lib is not None and len(lib[0]) > 0:
-            #a, char, b = self.find_window_chars(w_pl, lib)
-
-            i = -1
-            self.h = -1
-            while self.l > self.window or self.h < self.window:
-                i = i + 1
-                if i < len(lib[0]): char = lib[0][i]
-                else: char = -1
-                counts = self.find_counts(lib[1], i)
-                #print(counts)
-                a,b = self.find_probs(counts)
-                #hl1_N = float(self.ho-self.lo+1) / float(self.win_size)
-                a_pl = math.ceil(hl1_N * a)
-                b_pl = math.ceil(hl1_N * (b + 1)) - 1
-                self.l = self.lo + a_pl
-                self.h = self.lo + b_pl
-                if i > len(lib[1]):
-                    break
+        if lib is not None:
+            a, char, b = self.find_window_chars(w_pl, lib)
 
             # update l and h like before
-            #a_pl = math.ceil(hl1_N * a)
-            #b_pl = math.ceil(hl1_N * (b + 1)) - 1
+            a_pl = math.ceil(hl1_N * a)
+            b_pl = math.ceil(hl1_N * (b + 1)) - 1
 
-            #self.l = self.lo + a_pl
-            #self.h = self.lo + b_pl
+            self.l = self.lo + a_pl
+            self.h = self.lo + b_pl
             
-            #self.save_window() # before I change anything
+            self.save_window() # before I change anything
             enc_n, bit_n = self.update_window() # shifts the window and records how many bits need to be removed from l and h
             self.new_lh(enc_n, bit_n) # removes bits from l and h
 
             # checks for border issues
-            #if self.next_byte_outside_window():
-            #    self.load_window()
-            #    a,char,b = self.next_window_chars(a,char,b,lib)
+            if self.next_byte_outside_window():
+                self.load_window()
+                a,char,b = self.next_window_chars(a,char,b,lib)
                 # then as before
-            #    a_pl = math.ceil(hl1_N * a)
-            #    b_pl = math.ceil(hl1_N * (b + 1)) - 1
-            #    self.l = self.lo + a_pl
-            #    self.h = self.lo + b_pl
-            #    enc_n, bit_n = self.update_window() # shifts the window and records how many bits need to be removed from l and h
-            #    self.new_lh(enc_n, bit_n) # removes bits from l and h
+                a_pl = math.ceil(hl1_N * a)
+                b_pl = math.ceil(hl1_N * (b + 1)) - 1
+                self.l = self.lo + a_pl
+                self.h = self.lo + b_pl
+                enc_n, bit_n = self.update_window() # shifts the window and records how many bits need to be removed from l and h
+                self.new_lh(enc_n, bit_n) # removes bits from l and h
 
             # updates for the next run
             # there is definately an error here in the encoding ...
@@ -221,7 +204,6 @@ class arith_code_dec_k:
 
     def remove_masked(self, lib):
         #print(lib)
-        #print(len(lib[0]), len(lib[1]))
         alpha = lib[0].copy()
         counts = lib[1].copy()
         mask = lib[2].copy()
@@ -230,13 +212,6 @@ class arith_code_dec_k:
             alpha.pop(i)
             counts.pop(i)
             counts[-1] = counts[-1] - 1
-        #print(alpha, counts)
-        if 0 in counts:
-            i = counts.index(0)
-            #j = len(counts)
-            alpha = alpha[:i]
-            counts = counts[:i] + [counts[-1]]
-            counts[-1] = len(alpha)
         #print(alpha, counts)
         if len(alpha) > 0: return [alpha, counts]
         else: return None
@@ -250,29 +225,6 @@ class arith_code_dec_k:
             ret_val = True
 
         return ret_val
-
-    def find_probs(self, counts):
-        den = float(counts[0]+counts[1]+counts[2])
-        num1 = float(counts[0])
-        num2 = float(counts[0]+counts[1])
-        lb_fl = num1 / den
-        rb_fl = num2 / den
-        win = 2**self.N
-        #print(lb_fl, rb_fl, win)
-        lb = math.ceil(lb_fl * win)
-        rb = math.ceil(rb_fl * win) - 1
-        return lb, rb
-    
-    def find_counts(self, counts, i):
-        #print(counts)
-        if len(counts) <= 1:
-            return 0, 1, 0
-        if i == 0:
-            return [0, counts[0], sum(counts[1:])]
-        if i >= len(counts)-1:
-            i = len(counts) - 1
-            return [sum(counts[:i]), counts[i], 0]
-        return [sum(counts[:i]), counts[i], sum(counts[i+1:])]
 
     #      a, char, b = self.find_windows_chars(w_pl, ind1, ind2, char_arr)
     def find_window_chars(self, w_pl, lib):
