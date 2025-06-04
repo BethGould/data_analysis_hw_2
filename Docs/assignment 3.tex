@@ -15,10 +15,10 @@
 
 \subsection{Issues}
 
-I have so far found 2 issues, but I don't have the time to fix them, and they don't need to be fixed to get statistics.
+I have so far found 2 issues, one of which I fixed after getting some of the statistics, the other of which I don't have the time to fix, and doesn't need to be fixed to get statistics.
 \begin{enumerate}
 \item The number of cycles where the last bit doesn't change at the end is not being read properly. I do have an accounting for the end of stream, it just doesn't work properly. The problem is not always obvious. 
-\item If there is an extremely rare character or context, the character will not be correctly read, after which the decoder will soon encounter an error. I believe I know what the problem is and how to fix it, but it will require more time than I have.
+\item If there is an extremely rare character or context, the character will not be correctly read, after which the decoder will soon encounter an error. I have fixed this problem, but many of the statistics use the old decoder. 
 \end{enumerate}
 
 \subsection{Texts} 
@@ -58,7 +58,7 @@ The old method for storing the encoder array took ~20 minutes to encode. I think
 
 \subsection{Dynamic Machines without Masking}
 
-For text 2, N = 64 too small. I found a chunk of text strangely written (ultra rare). I think I can do something to deal with this, but I am not sure on my energy level right now. I deleted the problematic part of the text and tried again. However, I think it is possible to come up with an alternate workaround (or maybe one of the alternatives works). 
+For text 2, N = 64 too small. I found a chunk of text strangely written (ultra rare). I deleted the problematic part of the text and tried again.
 
 For text 4, as I suspected, the decoder reaches a problem at the first non-ascii character.
 
@@ -80,65 +80,63 @@ For text 4, as I suspected, the decoder reaches a problem at the first non-ascii
 
 In this section, I added masking of characters which we already ruled out. So far, doesn't seem faster, but might save some on size. It bypasses the problem with decoding ultra-rare cases, but for text2, I encountered the end of file issue. Manually telling it to decode the last four characters returns the original text, so it is just stopping at the wrong place. Text1 has an end of file issue of 1 character. I stopped looking for this afterwords. The data is in table 1.
 
-The decoder is still failing at the first non-ascii character for text 4. This may require the second fix which I noted in the issues section.
+The decoder is still failing at the first non-ascii character for text 4. This may require the second fix which I noted in the issues section. For all except k = 3, text2 also fails. I have updated the decoder, so the statistics for text2 use a different decoder than the others, which works for text2.
 
-k = 6 appears to be the best variant from the table, but k = 5 is not much worse and faster.
-
-
+k = 6 appears to be the best variant from the table, but k = 5 is not much worse and faster. This contrasts with the k = 4 estimate for the recommended length of k.
 
 \begin{table}[]
-\caption{Encoding an decoding time and space requirements based on text and maximum length of context.}
+\caption{Encoding and decoding with masking time and space requirements based on text and maximum length of context. Order is -- number of bits, encoding time, decoding time. Note that text 2 uses an updated decoder, so the times are not based on the same metric. Also all the timings are unstable.}
 \label{big}
 \begin{tabular}{|l|l|l|l|l|l|l|}
 \hline
 \textbf{}      & \textbf{Text 1}  & \textbf{Text 2} & \textbf{Text 3} & 
 \textbf{Reverse} & \textbf{Decap} & \textbf{Decap Rev} \\ \hline
-\textbf{find\_k k} &k=4&k=4&k=& k=8&k=4&k=8\\ \hline
+\textbf{find\_k k} &k=4&k=4&k=4& k=8&k=4&k=8\\ \hline
 \textbf{k=2}     & 
 \begin{tabular}[c]{@{}l@{}}1476416\\ 3 m 23.8s\\ 5m 23.1s\end{tabular} &
-\begin{tabular}[c]{@{}l@{}}1990550\\4m 32.5s\\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1990550\\4m 32.5s\\ 10m 4.9s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1990215\\ 4m 57.6s\\9m 7.4s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1476623\\ 2m 52.5s\\ 5m 11.9s\end{tabular}   &
 \begin{tabular}[c]{@{}l@{}}1470545\\ 3m 14 s\\ 4m 37.9s \end{tabular}&                
 \begin{tabular}[c]{@{}l@{}}1470470\\ 3m 32.9s \\ 7m 28.3s \end{tabular} \\ \hline
 \textbf{k=3}       &
 \begin{tabular}[c]{@{}l@{}}1192730\\ 3 m 9.2s\\ 4m 50.1s\end{tabular} &
-\begin{tabular}[c]{@{}l@{}}1593626\\ 4m 13.5s\\ 6m 50.7s\end{tabular}     &      
+\begin{tabular}[c]{@{}l@{}}1593626\\ 4m 13.5s\\ 9m 29.2s\end{tabular}     &      
 \begin{tabular}[c]{@{}l@{}}1593289\\ 5m 29.2s\\ 7m 14.1s \end{tabular}   & 
 \begin{tabular}[c]{@{}l@{}}1193200\\ 3m 6.0 s\\ 5m 3.6 s\end{tabular}   &                   
 \begin{tabular}[c]{@{}l@{}}1190498\\ 2m 48.7s\\ 4m 28.7s \end{tabular}& 
 \begin{tabular}[c]{@{}l@{}}1190568\\ 4m 12.8s \\ 6m 27.3s \end{tabular}\\ \hline
 \textbf{k=4}       &
 \begin{tabular}[c]{@{}l@{}}1058909\\ 3m 36.6s\\ 5m 29.3s \end{tabular} & 
-\begin{tabular}[c]{@{}l@{}}1399465\\   \\ \end{tabular}&     
+\begin{tabular}[c]{@{}l@{}}1399465\\6m 1.2s\\10m 54.4s\end{tabular}&     
 \begin{tabular}[c]{@{}l@{}}1399128\\  6m 6.4s\\9m 46.1s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1059650\\ 3m 55.0s\\ 6m 6.1s\end{tabular}    &                   
 \begin{tabular}[c]{@{}l@{}}1057195\\ 3m 25.5s\\ 5m 4.1s\end{tabular}&                          
 \begin{tabular}[c]{@{}l@{}}1057632\\ 4m 54s  \\ 7m 20.7s\end{tabular}\\ \hline
 \textbf{k=5}       &
 \begin{tabular}[c]{@{}l@{}}1017021\\ 4 m 22.6s\\ 6m 2.8s \end{tabular} &
-\begin{tabular}[c]{@{}l@{}}1335544\\   \\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1335544\\5m 46.9s\\ 8m 56.5s \end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1335207\\7m 32.5s\\10m 49.4s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1018142\\ 5m 1.3s\\ 7m 20.3s\end{tabular}    &
 \begin{tabular}[c]{@{}l@{}}1012264\\ 3 m 51.6s\\ 5m 17.3s \end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1013437\\  6m 21.1s \\6m 47.7s\end{tabular}\\ \hline
 \textbf{k=6}&
 \begin{tabular}[c]{@{}l@{}}1012453\\ 6 m 10.6s\\ 6m 34.5s\end{tabular} &
-\begin{tabular}[c]{@{}l@{}}1325093\\   \\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1325093\\ 7m 10.2s \\ 10m 30.9s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1324756\\8m 27.2s\\10m 11.2s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1013572\\ 6m 11.2s\\ 8m 32.9s\end{tabular}   &
 \begin{tabular}[c]{@{}l@{}}1004875\\ 5 m 24.5s\\ 6m 43.4s \end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1007044\\ 5m 38.3s  \\7m 1.8s\end{tabular}\\ \hline
 \textbf{k=7}&
 \begin{tabular}[c]{@{}l@{}}1023743\\6m59.5s\\8m 8.7s\end{tabular}&
-\begin{tabular}[c]{@{}l@{}}1338156\\   \\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1338156\\9m 91.s\\11m 52.8s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1337819\\9m 49.2s\\12m 15.4s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1024888\\ 7m 38.6s\\ 9m 12.8s\end{tabular} &                    
 \begin{tabular}[c]{@{}l@{}}1014294\\ 6m 11.5s  \\ 7m 43.6s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1018111\\ 6m 37.7s \\ 8m 2.0s\end{tabular}\\ \hline  
 \textbf{k=8} &                
 \begin{tabular}[c]{@{}l@{}}1040281\\8m 14.0s\\10m 29.9s\end{tabular}&                
-\begin{tabular}[c]{@{}l@{}}1359464\\   \\ \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1359464\\11m 59.5s\\14m 30.2s\end{tabular}&
 \begin{tabular}[c]{@{}l@{}}1359126\\12m 55.5s\\14m 58.7s\end{tabular}& 
 \begin{tabular}[c]{@{}l@{}}1041179\\ 8.5m \\ error\end{tabular}&                    
 \begin{tabular}[c]{@{}l@{}}1029459\\7m 47.5s\\ 8m 50.4s\end{tabular}&
@@ -151,7 +149,7 @@ k = 6 appears to be the best variant from the table, but k = 5 is not much worse
 The data for the probabilities for the probability of the most likely character are given in Table 2. For every step, I found the most likely character out of the remaining characters, adding a character onto the beginning. By the end, my count is only 9.
 I believe that the method I use here to estimate the best k is not the correct version, it is not very useful at all, but every other variant I can think of would run into the time issues of the static machine count, which I was trying to avoid.
 
-The current calculation takes 30 seconds.
+The current calculation takes 30 seconds on my original computer and 5s on my faster computer.
 
 \begin{table}[]
 \caption{Probability of the most frequent character given the most frequent context.}
@@ -181,6 +179,101 @@ k  & Probability & Added Bit \\ \hline
 \end{table}
 
 \section{Wikipedia Benchmark}
+
+Timings are done on a separate computer with the updated decoder. I have an update of Table 1 given in Table 3 for comparison. All of these use the most recent version of the decoder.
+
+The times for the 100 MB benchmark are:
+
+\begin{itemize}
+\item estimated k = 4
+\item time to estimate k = 1m 44.0s
+\item k = 5
+\item size = 24,329,385
+\item encode time = 34m 50.3s
+\item decode time = 57m 31.0s
+\item k = 6
+\item size = 23,483,486
+\item encode time = 41m 49.8s
+\item decode time = 61m 39.8s
+\end{itemize}
+
+And for the 1GB benchmark are:
+
+\begin{itemize}
+\item estimated k = 4
+\item time to estimate k = 15m 41.0s
+\item k = 5
+\item size = 218,062,631
+\item encode time = 353m 52.7s
+\item decode time = 561m 52.7s
+\end{itemize}
+
+
+\begin{table}[]
+\caption{Encoding an decoding time based on text and maximum length of context on a faster computer for comparison with Wikipedia benchmark times. Order is -- encrypted size in bytes, encoding time, decoding time. Text 4 has an estimated k of 4.}
+\label{three}
+\begin{tabular}{|l|l|l|l|l|l|l|l|}
+\hline
+\textbf{k}      & \textbf{Text 1}  & \textbf{Text 2} & \textbf{Text 3} & 
+ \textbf{Text 4} & \textbf{Rev} & \textbf{Decap} & \textbf{Dec+Rev} \\ \hline
+\textbf{2}     & 
+\begin{tabular}[c]{@{}l@{}}1476416\\ 55.2s \\ 2m 14.8s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1990550\\ 1m 18.3s \\ 3m 9.4s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1990215\\ 1m 16.9s \\ 3m 8.5s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}3487140\\ 2m 19.4s \\ 5m 43.9s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1476623\\ 53.5s \\ 2m 5.9s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1470545\\ 54.1s \\ 2m 10.2s \end{tabular}&               
+\begin{tabular}[c]{@{}l@{}}1470470\\ 55.9s \\ 2m 10.3s \end{tabular}\\ \hline
+\textbf{3}       &
+\begin{tabular}[c]{@{}l@{}}1192730\\ 1m 0.9s \\ 2m 0.2s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1593626\\ 1m 24.4s \\ 2m 44.1s \end{tabular}&      
+\begin{tabular}[c]{@{}l@{}}1593289\\ 1m 24.6s \\ 2m 45.7s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2789743\\ 2m 33.3s \\ 5m 6.9s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1193200\\ 58s \\ 1m 54.2s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1190498\\ 58.6s \\ 1m 55.2s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1190568\\ 1m 0.2s \\ 1m 58s \end{tabular}\\ \hline
+\textbf{4}       &
+\begin{tabular}[c]{@{}l@{}}1058909\\ 1m 12.5s \\ 2m 3.6s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1399465\\ 1m 39.3s \\ 2m 49.1s \end{tabular}&    
+\begin{tabular}[c]{@{}l@{}}1399128\\ 1m 40.5s \\ 2m 49.2s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2438273\\ 4m 34.9s \\ 7m 54.8s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1059650\\ 1m 8.8s \\ 1m 57.4s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1057195\\ 1m 8.5s \\ 1m 56.8s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1057632\\ 1m 11.2s \\ 2m 3.1s \end{tabular}\\ \hline
+\textbf{5}       &
+\begin{tabular}[c]{@{}l@{}}1017021\\ 1m 28.4s \\ 2m 15.4s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1335544\\ 1m 59.1s \\ 3m 3.9s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1335207\\ 1m 59.3s \\ 3m 2.6s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2311383\\ 5m 28.8s \\ 6m 11.8s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1018142\\ 1m 22.9s \\ 2m 9.0s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1012264\\ 1m 22.9s \\ 2m 7.4s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1013437\\ 1m 25.8s \\ 2m 13s \end{tabular}\\ \hline
+\textbf{6}&
+\begin{tabular}[c]{@{}l@{}}1012453\\ 1m 49.5s \\ 2m 32.4s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1325093\\ 2m 27.5s \\ 3m 25.8s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1324756\\ 2m 24.7s \\ 3m 25.1s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2280430\\ 4m 22.2s \\ 6m 11.9s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1013572\\ 1m 42.9s \\ 2m 25.9s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1004875\\ 1m 42.6s \\ 2m 26.8s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1007044\\ 1m 47.4s \\ 2m 32s \end{tabular}\\ \hline
+\textbf{7}&
+\begin{tabular}[c]{@{}l@{}}1023743\\ 2m 13.2s \\ 2m 55.8s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1338156\\ 3m 0.1s \\ 3m 55.4s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1337819\\ 2m 59.8s \\ 3m 57.2s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2294026\\ 5m 20.1s \\ 6m 57s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1024888\\ 2m 8.6s \\ 2m 48.3s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1014294\\ 2m 7.9s \\ 2m 47.4s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1018111\\ 2m 14s \\ 2m 54.6s \end{tabular}\\ \hline  
+\textbf{8} &                
+\begin{tabular}[c]{@{}l@{}}1040281\\ 2m 44.4s \\ 3m 22.7s \end{tabular}&                
+\begin{tabular}[c]{@{}l@{}}1359464\\ 3m 38.2s \\ 4m 32s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1359126\\ 3m 37.3s \\ 4m 30.3s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2326546\\ 6m 24.2s \\ 8m 2.2s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1041179\\ 2m 38.1s \\ 3m 14.7s \end{tabular}&                    
+\begin{tabular}[c]{@{}l@{}}1029459\\ 2m 36.4s \\ 3m 13.8s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1034963\\ 2m 45.1s \\ 3m 21.1s \end{tabular}\\ \hline
+\end{tabular}
+\end{table}
 
 
 \end{document}
