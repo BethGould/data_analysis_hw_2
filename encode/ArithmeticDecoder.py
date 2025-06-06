@@ -71,6 +71,9 @@ class arith_code_dec_k:
         self.duration_static += i - 1
         self.duration_static -= self.whitespace
 
+        self.duration_static -= 8
+        #print(self.duration_static)
+
         # the last bit is now guarenteed to be 1 (unless there are no more remaining 1s)
         # the following condition marks this situation
         if (self.cur_by > self.byte_l) or ((self.cur_by == self.byte_l) and (self.cur_bi > self.bit_end)):
@@ -359,9 +362,9 @@ class arith_code_dec_k:
 
         # the final 0s in the file
         if nbitload == 0:
-            self.duration_static += 1
+            self.static_count += 1
         else:
-            self.duration_static = 0
+            self.static_count = 0
 
         # widening the window
         for i in range(self.N - nbitload - 1):

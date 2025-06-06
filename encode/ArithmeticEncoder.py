@@ -172,6 +172,8 @@ class arith_code_enc_k:
         self.byte_encode.load_bits(1,1) # this is always 1, because 00, 01, 11 are the only possibilities, and 00 and 11 will already be removed.
         if self.duration_static > 0:
             self.byte_encode.load_bits(0, self.duration_static) # how many final characters the fraction was unchanged
+
+        #print(self.duration_static)
             
         # now to finalize the bytestream
         a = 8 - self.byte_encode.bit_count

@@ -13,13 +13,21 @@
 
 \section{Compressor Statistics}
 
-\subsection{Issues}
+\subsection{Intro}
 
-I have so far found 2 issues, one of which I fixed after getting some of the statistics, the other of which I don't have the time to fix, and doesn't need to be fixed to get statistics.
-\begin{enumerate}
-\item The number of cycles where the last bit doesn't change at the end is not being read properly. I do have an accounting for the end of stream, it just doesn't work properly. The problem is not always obvious. 
-\item If there is an extremely rare character or context, the character will not be correctly read, after which the decoder will soon encounter an error. I have fixed this problem, but many of the statistics use the old decoder. 
-\end{enumerate}
+\begin{itemize}
+\item Escape probability given by C.
+\item In an old version of the code, if there is an extremely rare character or context, the character will not be correctly read, after which the decoder will soon encounter an error. I have fixed this problem, but many of the statistics use the old decoder. 
+\item The number of cycles where the last bit doesn't change at the end was not read properly. I believe this has been fixed, but it doesn't effect statistics in any case.
+\item There is a new wrapper code. They will all give results with two more bytes (k and N) than the statistics for which I have here. I just hadn't thought about sending these two numbers. 
+\begin{itemize}
+\item encode.run\_encoder(import\_file, export\_file, k = None, N = 64)
+\item[*] import file and export file are file names
+\item[*] k = None will try to calculate k based on the most likely character and context, otherwise k gives the desired context length
+\item[*] N is the length of the window, and must be a whole number of bytes
+\item encode.run\_decoder(import\_file, export\_file)
+\end{itemize}
+\end{itemize}
 
 \subsection{Texts} 
 
