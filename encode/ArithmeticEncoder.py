@@ -28,6 +28,7 @@ class arith_code_enc_k:
         # counts
         self.count_m = counts_mngr
         self.k = counts_mngr.k
+        self.first_choise = self.count_m.first_choise
 
         # encoding
         self.byte_encode = byte_mng_enc()
@@ -50,11 +51,40 @@ class arith_code_enc_k:
 
     def add_character(self, char):
         self.char = char
-        counts = self.count_m.get_counts_full(self.context, self.char)
-        for i in counts:
-            self.encode_character(i)
+
+        if self.first_choise:
+            lib = self.count_m.get_counts_full(self.context, None)
+            k_start = self.estimate_context_length(lib)
+            context = self.context[k_start:]
+            counts = self.count_m.get_counts_full(context, self.char)
+            for i in counts:
+                self.encode_character(i)
+        else:
+            counts = self.count_m.get_counts_full(self.context, self.char)
+            for i in counts:
+                self.encode_character(i)
 
         self.update_context() # so that the next context uses the current character and removes the oldest
+
+    def estimate_context_length(self, lib):
+        probs = [] #longest context to shortest context
+        #print(lib)
+        for i in lib:
+            if i == None:
+                probs.append(1)
+            elif len(i[0])==0:
+                probs.append(1)
+            else:
+                den = float(sum(i[1]))
+                prob = [(float(x) / den) for x in i[1]]
+                probs.append(max(prob))
+
+        if len(probs) == 0: ret_val = 0
+        else: ret_val = probs.index(max(probs))
+
+        #print('return', ret_val)
+
+        return ret_val # returns starting index in context array
 
     def encode_character(self, counts):
         a,b = self.find_probs(counts)

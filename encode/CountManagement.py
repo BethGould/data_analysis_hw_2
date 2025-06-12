@@ -153,14 +153,17 @@ class count_mng_dyn_sta(count_mng):
         return self.alphabet[i]
 
 class count_mng_dynamic(count_mng):
-    def __init__(self, new_mode=2):
+    def __init__(self, new_mode=2, first_choise = False, update_exclusion = False):
         self.alphabet = []
         self.counts = []
         self.mode = 2
         self.k = 0
         self.new_mode = new_mode
+        self.first_choise = first_choise
+        self.update_exclusion = update_exclusion
 
-    def get_counts(self, excl, char=None):
+
+    def get_counts(self, excl={}, char=None):
         if char == None:
             if len(self.alphabet) == 0:
                 return None
@@ -185,9 +188,11 @@ class count_mng_dynamic(count_mng):
                     countret = [sum(new_counts), self.get_count_new(alphabet=new_alphabet), 0, set(self.alphabet.copy())]
                 else:
                     countret = [sum(new_counts[:num_char]), new_counts[num_char], sum(new_counts[num_char+1:])+self.get_count_new(alphabet=new_alphabet)]
+                #if self.update_exclusion: self.increment_count([], char)
                 return [countret[0], countret[1], countret[2], {}]
             else:
                 countret = [sum(new_counts), self.get_count_new(alphabet=new_alphabet)]
+                #if self.update_exclusion: self.increment_count([], char)
                 return [countret[0], countret[1], 0, set(self.alphabet.copy())]
 
     def find_num_char(self, char):
@@ -196,7 +201,7 @@ class count_mng_dynamic(count_mng):
         else:
             return -1
     
-    def increment_count(self, char):
+    def increment_count(self, context, char):
         if char in self.alphabet:
             self.counts[self.alphabet.index(char)] +=1
         else:
@@ -226,8 +231,8 @@ class count_mng_dynamic(count_mng):
 from encode.ByteManagement import byte_mng_dec
 
 class count_dynamic_k_child(count_mng_dynamic):
-    def __init__(self, k:int, new_mode=2):
-        count_mng_dynamic.__init__(self, new_mode)
+    def __init__(self, k:int, new_mode=2, first_choise = False, update_exclusion = False):
+        count_mng_dynamic.__init__(self, new_mode, first_choise, update_exclusion)
         self.children = []
         self.k = k
         self.mode = 6
@@ -238,12 +243,18 @@ class count_dynamic_k_child(count_mng_dynamic):
         # This is for when we begin a new count.
         if char == None:
             if len(self.alphabet) == 0:
+                return None 
+            if len(context) > 0 and context[0] not in self.alphabet:
                 return None
 
         # This is when we are at the bottom of a branch
         if len(context) == 0:
             return count_mng_dynamic.get_counts(self, excl, char)
         
+        # this is used for first model choise cases
+        if context[0] not in self.alphabet:
+            return [0,1,0,{}]
+
         if len(context) == 1 and self.k == len(context):
             return self.children[self.alphabet.index(context[0])].get_counts(excl, char)
 
@@ -253,9 +264,12 @@ class count_dynamic_k_child(count_mng_dynamic):
                 
     def increment_count(self, context, char):
         if len(context) == 0:
-            count_mng_dynamic.increment_count(self, char)
+            count_mng_dynamic.increment_count(self, [], char)
+        elif context[0] not in self.alphabet:
+            count_mng_dynamic.increment_count(self, [], context[0])
+            self.increment_count(context, char)
         elif len(context) == 1 and self.k == len(context):
-            self.children[self.alphabet.index(context[0])].increment_count(char)
+            self.children[self.alphabet.index(context[0])].increment_count([], char)
         else:
             self.children[self.alphabet.index(context[0])].increment_count(context[1:], char)
 
@@ -279,28 +293,9 @@ class count_dynamic_k_child(count_mng_dynamic):
 # ------------------------------------------
 
 class count_dynamic_k(count_dynamic_k_child):
-    def __init__(self, k:int, new_mode=2):
-        count_dynamic_k_child.__init__(self, k, new_mode)
+    def __init__(self, k:int, new_mode=2, update_exclusion = False, first_choise = False):
+        count_dynamic_k_child.__init__(self, k, new_mode, first_choise, update_exclusion)
         self.alphabet_final = -1
-
-    #def build_alphabet(self, text:bytes):
-    #    self.alphabet = []
-    #    for i in range(256):
-    #        if i in text:
-    #            self.append_alphabet(i)
-    #    self.alphabet_final = -2
-
-    #def load_alphabet_static(self, byte_m:byte_mng_dec):
-    #    self.alphabet = remove_byte_arr(byte_m)
-    #    self.counts = [1]*len(self.alphabet)
-    #    self.children = []
-    #    for i in range(len(self.alphabet)):
-    #        if self.k == 1:
-    #            new_child = count_mng_dynamic(self.new_mode)
-    #        else:
-    #            new_child = count_dynamic_k(self.k - 1, self.new_mode)
-    #        self.children.append(new_child) 
-    #    self.alphabet_final = -2
 
     def load_alphabet_dynamic(self, byte_m:byte_mng_dec):
         leng = byte_m.read_bits(8)
@@ -341,12 +336,25 @@ class count_dynamic_k(count_dynamic_k_child):
             #print("v2", context_new, char, ret_arr[-1])
             symbol = self.find_if_new(ret_arr[-1], char)
 
+        if self.first_choise and char == None:
+            #print('here')
+            ret_arr_2 = []
+            while len(context_new) > 0:
+                context_new = context_new[1:]
+                if char is None: excl_n = excl
+                else: excl_n = ret_arr[-1][-1]
+                ret_arr_2.append(self.get_counts(context_new, excl_n, char))
+            return ret_arr + ret_arr_2
 
         # add to the counts not accessed
-        if char is not None:
-            self.increment_count([], char)
-            for i in range(len(context)):
-                self.increment_count(context[i:], char) 
+        if (char is not None):
+            if not self.update_exclusion:
+                self.increment_count([], char)
+                for i in range(len(context)):
+                    self.increment_count(context[i:], char)
+            else:
+                for i in range(len(ret_arr)): 
+                    self.increment_count(context[i:], char)
 
         return ret_arr
 
@@ -374,13 +382,20 @@ class count_dynamic_k(count_dynamic_k_child):
 
     # needs to be updated, it is not correct, but I need to look at the surrounding logic
     # char = -1 means new char, otherwise, char is found from the alphabet
-    def increment_count_full(self, context, char):
+    # context_len equals the number of elements to increment
+    def increment_count_full(self, context, char, no_counts = 0):
         #print(char)
         if char == -1:
             char = self.alphabet[self.alphabet_final]
             self.alphabet_final += 1
-        for i in range(len(context)):
-            self.increment_count(context[i:], char)
-        self.counts[self.alphabet.index(char)] +=1
+        if not self.update_exclusion:
+            for i in range(len(context)):
+                self.increment_count(context[i:], char)
+            self.counts[self.alphabet.index(char)] +=1
+        # this is not yet correct
+        else:
+            if no_counts > len(context) + 1: print("context length error")
+            for i in range(no_counts):
+                self.increment_count(context[i:], char)
         #print(context, char)
         return char

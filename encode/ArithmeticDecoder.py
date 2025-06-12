@@ -29,6 +29,7 @@ class arith_code_dec_k:
         # counts
         self.count_m = counts_mngr
         self.k = counts_mngr.k
+        self.first_choise = self.count_m.first_choise
 
         # encoding
         self.byte_encode = byte_m
@@ -150,18 +151,55 @@ class arith_code_dec_k:
     def remove_character(self):
         char = -1
         x = 0
-        context = self.context.copy()
+        context = self.context
         excl = {}
-        while char == -1 and x < len(self.context)+1:
-            ret_arr = self.count_m.get_counts_full(context, excl = excl)
-            char = self.decode_character(ret_arr[-1])
-            context = context[len(ret_arr):]
-            x = x + len(ret_arr)
-            excl = set(ret_arr[-1][0])
+        if self.first_choise:
+            lib = self.count_m.get_counts_full(self.context, None)
+            k_start = self.estimate_context_length(lib)
+            context = context[k_start:]
+            context_new = context
+            if len(self.context) != len(lib) -1: print(len(context), len(lib))
+            if len(context_new) != len(lib[k_start:])-1: print('lengths 2')
+            for arr in lib[k_start:]:
+                if arr is not None:
+                    char = self.decode_character([arr[0], arr[1], excl])
+                    excl = set(arr[0])
+                context_new = context_new[1:]
+                x = x + 1
+                if char != -1:
+                    break
+        else:
+            while char == -1 and x < len(self.context)+1:
+                ret_arr = self.count_m.get_counts_full(context, excl = excl)
+                char = self.decode_character(ret_arr[-1])
+                context = context[len(ret_arr):]
+                x = x + len(ret_arr)
+                excl = set(ret_arr[-1][0])
+            context = self.context
 
-        self.char = self.count_m.increment_count_full(self.context, char)
+        self.char = self.count_m.increment_count_full(context, char, no_counts=x)
         self.update_context() # so that the next context uses the current character and removes the oldest
         return self.char
+    
+    def estimate_context_length(self, lib):
+        probs = [] #longest context to shortest context
+        #print(lib)
+        for i in lib:
+            if i == None:
+                probs.append(1)
+            elif len(i[0])==0:
+                probs.append(1)
+            else:
+                den = float(sum(i[1]))
+                prob = [(float(x) / den) for x in i[1]]
+                probs.append(max(prob))
+
+        if len(probs) == 0: ret_val = 0
+        else: ret_val = probs.index(max(probs))
+
+        #print('return', ret_val)
+
+        return ret_val # returns starting index in context array
 
     def decode_character(self, lib):
         # find the location in the probability space for our byte array window 
