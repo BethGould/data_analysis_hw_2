@@ -317,7 +317,7 @@ class count_dynamic_k(count_dynamic_k_child):
     # our new get_counts needs to go through the recursive list structure, 
     # but potentially not ....
 
-    def get_counts_full(self, context, char=None, excl = {}):
+    def get_counts_full(self, context, char=None, excl = {}, full_context=None):
         ret_arr = []
         ret_arr.append(self.get_counts(context, excl, char))
         
@@ -349,6 +349,7 @@ class count_dynamic_k(count_dynamic_k_child):
         # add to the counts not accessed
         if (char is not None):
             if not self.update_exclusion:
+                if full_context is not None: context = full_context
                 self.increment_count([], char)
                 for i in range(len(context)):
                     self.increment_count(context[i:], char)

@@ -56,9 +56,11 @@ class arith_code_enc_k:
             lib = self.count_m.get_counts_full(self.context, None)
             k_start = self.estimate_context_length(lib)
             context = self.context[k_start:]
-            counts = self.count_m.get_counts_full(context, self.char)
+            if self.count_m.update_exclusion: counts = self.count_m.get_counts_full(context, self.char)
+            else: counts = self.count_m.get_counts_full(context, self.char, full_context=self.context)
             for i in counts:
                 self.encode_character(i)
+            #if not self.count_m.update_exclusion: self.count_m.increment_count_full(self.context, char)
         else:
             counts = self.count_m.get_counts_full(self.context, self.char)
             for i in counts:
@@ -66,6 +68,7 @@ class arith_code_enc_k:
 
         self.update_context() # so that the next context uses the current character and removes the oldest
 
+    # calculates maximum probability character in every step
     def estimate_context_length(self, lib):
         probs = [] #longest context to shortest context
         #print(lib)
@@ -85,6 +88,85 @@ class arith_code_enc_k:
         #print('return', ret_val)
 
         return ret_val # returns starting index in context array
+
+    # calculates full maximum probability character
+    # currently only works for full counts    
+    def estimate_context_length_v2(self, lib):
+        #probs = [] #longest context to shortest context
+
+        # find character
+        if lib[-1] is not None:
+            alpha = lib[-1][0].copy()
+            count = lib[-1][1]
+            alpha.append(-1)
+            char = alpha[count.index(max(count))]
+            del alpha
+        else:
+            char = -1
+
+        #jj = -1
+
+        # if the selected character is not in the library, 
+        # then the selected character is considered to be new
+        # or prob = 0
+        # I need to test results for variants
+        # always prob 0, always new, or new only for the first case. 
+        probs = self.search_lib(lib, char, var=2)
+
+        if len(probs) == 0: ret_val = 0
+        else: ret_val = probs.index(max(probs))
+
+        #print('return', ret_val)
+
+        return ret_val # returns starting index in context array
+
+    def search_lib(self, lib, char, var):
+        probs = []
+        jj = -2
+
+        # if the selected character is not in the library, 
+        # then the selected character is considered to be new
+        # or prob = 0
+        # I need to test results for variants
+        # always prob 0, always new, or new only for the first case. 
+        for j, i in enumerate(lib):
+            # for list with only the new possibility
+            if i == None or len(i[0])==0:
+                if char == -1:
+                    probs.append(1)
+                else:
+                    if var == 0:
+                        probs.append(0)
+                    elif var == 1:
+                        probs.append(1)
+                    else:
+                        jj = j
+                        p = 1
+                        probs.append(0)
+            # for lists with more characters
+            else:
+                den = float(sum(i[1]))
+                prob = [(float(x) / den) for x in i[1]]
+                # this is the new case
+                if char == -1:
+                    probs.append(prob[-1])
+                elif char not in i[0]:
+                    if var == 0:
+                        probs.append(0)
+                    elif var == 1:
+                        probs.append(prob[-1])
+                    else:
+                        jj = j
+                        p = prob[-1]
+                        probs.append(0)
+                else:
+                    probs.append(prob[i[0].index(char)])
+
+        if var != 0 and var != 1 and jj > -1:
+            probs[jj] = p
+
+        return probs
+
 
     def encode_character(self, counts):
         a,b = self.find_probs(counts)
