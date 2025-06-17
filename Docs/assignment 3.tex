@@ -25,6 +25,8 @@
 \item[*] import file and export file are file names
 \item[*] k = None will try to calculate k based on the most likely character and context, otherwise k gives the desired context length
 \item[*] N is the length of the window, and must be a whole number of bytes
+\item[*] update\_exclusion = False, implements update exclusion variant when True
+\item[*] first\_model = False, implements choice of the first model when True
 \item encode.run\_decoder(import\_file, export\_file)
 \end{itemize}
 \end{itemize}
@@ -84,9 +86,9 @@ For text 4, as I suspected, the decoder reaches a problem at the first non-ascii
 
 
 
-\subsection{Dynamic Machines with Masking (Update Exclusions)}
+\subsection{Dynamic Machines with Masking}
 
-In this section, I added masking of characters which we already ruled out. So far, doesn't seem faster, but might save some on size. It bypasses the problem with decoding ultra-rare cases, but for text2, I encountered the end of file issue. Manually telling it to decode the last four characters returns the original text, so it is just stopping at the wrong place. Text1 has an end of file issue of 1 character. I stopped looking for this afterwords. The data is in table 1.
+In this section, I added masking of characters which we already ruled out when we choose to encode the new character. So far, it doesn't seem faster, but might save some on size. It bypasses the problem with decoding ultra-rare cases, but for text2, I encountered the end of file issue. Manually telling it to decode the last four characters returns the original text, so it is just stopping at the wrong place. Text1 has an end of file issue of 1 character. I stopped looking for this afterwords. The data is in Table \ref{big}. Table \ref{three} updates the timing.
 
 The decoder is still failing at the first non-ascii character for text 4. This may require the second fix which I noted in the issues section. For all except k = 3, text2 also fails. I have updated the decoder, so the statistics for text2 use a different decoder than the others, which works for text2.
 
@@ -152,69 +154,67 @@ k = 6 appears to be the best variant from the table, but k = 5 is not much worse
 \end{tabular}
 \end{table}
 
+\subsection{Update Exclusions}
+
+This is for only updating the accessed data points. Results appear slightly better that before, but not by much. The data for this is in Table \ref{four}. This table has runs with a newer version of the code than Table \ref{three}, and therefore the timings are not completely consistent. The byte size is also not completely consistent, as they have 2 more bytes at the beginning due to sending information of model parameters.
+
+
 \subsection{Choice of First Model}
 
-The data for the probabilities for the probability of the most likely character are given in Table 2. For every step, I found the most likely character out of the remaining characters, adding a character onto the beginning. By the end, my count is only 9.
-I believe that the method I use here to estimate the best k is not the correct version, it is not very useful at all, but every other variant I can think of would run into the time issues of the static machine count, which I was trying to avoid.
+I have found no variant of interpretation of this idea helpful. It always increases the time requirements (and ensures that encoding time is similar to decoding time, although both are greater than the old decoding time). Statistics for the best interpretations are in Table \ref{four}.
 
-The current calculation takes 30 seconds on my original computer and 5s on my faster computer.
+Variants:
+\begin{itemize}
+\item Choosing model based on the full statistics. The preferred k is definitely not optimal.
+\item Choose character with greatest probability (at the root when there is no update exclusion) and find the greatest probability for it at every machine length. 
+Results for text 2 for k = 6 are 2851636 (if not in set, p=0), 2815064 (if not in set p=0 except for the smallest such case, for which p=p\_new), 2367140 (if not in set, p = p\_new). All are significantly greater than the optimal 1324595 for this text and k.
+\item Calculate for every step, for every potential machine length, which one has the greatest probability for the most likely character of that machine length. The best performing variant is with update exclusion, which is slightly worse than with or without update exclusion without the first model choice. Without update exclusion, updating the full tree every time, is worse, but not by much. k prefers to be larger in this case than for other cases. All other variants are noticeably worse preforming. 
+\end{itemize}
+
+\section{Wikipedia Benchmark}
+
+Statistics for 100MB are in Table \ref{wiki8}, and statistics for 1 GB are in Table \ref{wiki9}.
+
 
 \begin{table}[]
-\caption{Probability of the most frequent character given the most frequent context.}
-\label{probs}
+\caption{Statistics for the 100MB Wikipedia benchmark.}
+\label{wiki8}
 \begin{center}
 
-\begin{tabular}{|l|l|l|}
+\begin{tabular}{|l|l|l|l|l|}
 \hline
-k  & Probability & Added Bit \\ \hline
-0  & 0.172       & 32        \\ \hline
-1  & 0.166       & 101       \\ \hline
-2  & 0.327       & 104       \\ \hline
-3  & 0.750       & 116       \\ \hline
-4  & 0.997       & 32        \\ \hline
-5  & 0.153       & 110       \\ \hline
-6  & 0.474       & 105       \\ \hline
-7  & 0.944       & 32        \\ \hline
-8  & 0.191       & 101       \\ \hline
-9  & 0.233       & 114       \\ \hline
-10 & 0.333       & 101       \\ \hline
-11 & 0.566       & 104       \\ \hline
-12 & 0.529       & 119       \\ \hline
-13 & 0.667       & 101       \\ \hline
+Variant          & k & Size (\%) & Encode Time & Decode Time \\ \hline
+Standard         & 5 & 24.33\%   & 41 m 14 s   & 66 m 40 s   \\ \hline
+Standard         & 6 & 23.48\%   & 50 m 36 s   &  73 m 57 s  \\ \hline
+Update Exclusion & 5 & 24.10\%   & 27 m 20 s   &  52 m 34 s  \\ \hline
+Update Exclusion & 6 & 23.26\%   & 31 m 38 s   &  55 m 17 s  \\ \hline
+First Model      & 6 & 25.64\%   & 169 m 25 s  & 186 m 45 s  \\ \hline
+First Model      & 7 & 24.92\%   & 187 m 00 s  & 200 m 57 s  \\ \hline
+First Model      & 8 & 24.45\%   & 208 m 02 s  & 217 m 07 s  \\ \hline
+Both             & 6 & 23.69\%   & 142 m 37 s  & 156 m 57 s  \\ \hline
+Both             & 7 & 23.33\%   & 150 m 14 s  & 162 m 01 s  \\ \hline
 \end{tabular}
 \end{center}
 
 \end{table}
 
-\section{Wikipedia Benchmark}
+\begin{table}[]
+\caption{Statistics for the 1G Wikipedia benchmark.}
+\label{wiki9}
+\begin{center}
 
-Timings are done on a separate computer with the updated decoder. I have an update of Table 1 given in Table 3 for comparison. All of these use the most recent version of the decoder.
+\begin{tabular}{|l|l|l|l|l|}
+\hline
+Variant          & k & Size (\%) & Encode Time & Decode Time \\ \hline
+Standard         & 5 & 21.81\%   & 385 m 37 s  & 616 m 14 s  \\ \hline
+Standard         & 6 & 20.30\%   & 522 m 42 s  & 693 m 55 s  \\ \hline
+Update Exclusion & 6 &     &     &     \\ \hline
+First Model      & 8 &     &    &    \\ \hline
+Both             & 6 &     &    &    \\ \hline
+\end{tabular}
+\end{center}
 
-The times for the 100 MB benchmark are:
-
-\begin{itemize}
-\item estimated k = 4
-\item time to estimate k = 1m 44.0s
-\item k = 5
-\item size = 24,329,385
-\item encode time = 34m 50.3s
-\item decode time = 57m 31.0s
-\item k = 6
-\item size = 23,483,486
-\item encode time = 41m 49.8s
-\item decode time = 61m 39.8s
-\end{itemize}
-
-And for the 1GB benchmark are:
-
-\begin{itemize}
-\item estimated k = 4
-\item time to estimate k = 15m 41.0s
-\item k = 5
-\item size = 218,062,631
-\item encode time = 353m 52.7s
-\item decode time = 561m 52.7s
-\end{itemize}
+\end{table}
 
 
 \begin{table}[]
@@ -282,6 +282,100 @@ And for the 1GB benchmark are:
 \begin{tabular}[c]{@{}l@{}}1034963\\ 2m 45.1s \\ 3m 21.1s \end{tabular}\\ \hline
 \end{tabular}
 \end{table}
+
+
+
+\begin{table}[]
+\caption{Encryption size, and encoding and decoding time based on text and maximum length of context for update exclusion and first model variants. Order is -- encrypted size in bytes, encoding time, decoding time. k from 5 to 7 for update exclusion, 6 to 9 for first model, and 5 to 7 when both variants are used together. UE = update exclusion, FM = choice of the first model, B = both}
+\label{four}
+\begin{tabular}{|l|l|l|l|l|l|l|l|}
+\hline
+\textbf{Type}      & \textbf{Text 1}  & \textbf{Text 2} & \textbf{Text 3} & 
+ \textbf{Text 4} & \textbf{Rev} & \textbf{Decap} & \textbf{Dec+Rev} \\ \hline
+\textbf{UE5}     & 
+\begin{tabular}[c]{@{}l@{}}1014029\\ 1m 08s \\ 2m 02s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1330437\\ 1m 27s \\ 2m 37s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1330146\\ 1m 31s \\ 2m 44s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2302544\\ 2m 32s \\ 4m 37s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1013960\\ 1m 04s \\ 1m 54s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1009975\\ 1m 04s \\ 1m 56s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1010582\\ 1m 02s \\ 1m 53s \end{tabular}\\ \hline
+\textbf{UE6}       &
+\begin{tabular}[c]{@{}l@{}}1013181\\ 1m 23s \\ 2m 15s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1324595\\ 1m 46s \\ 2m 52s \end{tabular}&      
+\begin{tabular}[c]{@{}l@{}}1324304\\ 1m 51s \\ 3m 00s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2279118\\ 3m 01s \\ 5m 00s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1013191\\ 1m 18s \\ 2m 08s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1006058\\ 1m 19s \\ 2m 10s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1007908\\ 1m 16s \\ 2m 05s \end{tabular}\\ \hline
+\textbf{UE7}       &
+\begin{tabular}[c]{@{}l@{}}1029213\\ 1m 45s \\ 2m 36s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1343801\\ 2m 11s \\ 3m 16s \end{tabular}&    
+\begin{tabular}[c]{@{}l@{}}1343511\\ 2m 18s \\ 3m 25s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2303153\\ 3m 43s \\ 5m 38s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1029317\\ 1m 40s \\ 2m 26s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1020037\\ 1m 40s \\ 2m 28s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1023760\\ 1m 37s \\ 2m 24s \end{tabular}\\ \hline
+\textbf{FM6}&
+\begin{tabular}[c]{@{}l@{}}1055325\\ 7m 03s \\ 9m 10s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1388465\\ 12m 28s \\ 13m 38s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1388150\\ 7m 47s \\ 8m 43s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2419931\\ 13m 07s \\ 15m 05s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1058296\\ 5m 05s \\ 5m 33s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1048529\\ 4m 41s \\ 5m 15s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1055152\\ 4m 32s \\ 5m 09s \end{tabular}\\ \hline
+\textbf{FM7}&
+\begin{tabular}[c]{@{}l@{}}1041703\\ 9m 36s \\ 10m 13s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1368991\\ 14m 15s \\ 15m 08s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1368667\\ 8m 59s \\ 9m 38s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2376351\\ 15m 04s \\ 16m 41s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1043577\\ 5m 49s \\ 6m 13s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1034037\\ 5m 31s \\ 5m 55s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1038521\\ 5m 21s \\ 5m 47s \end{tabular}\\ \hline  
+\textbf{FM8} &                
+\begin{tabular}[c]{@{}l@{}}1039151\\ 11m 11s \\ 11m 22s \end{tabular}&                
+\begin{tabular}[c]{@{}l@{}}1363879\\ 16m 22s \\ 16m 48s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1363552\\ 10m 20s \\ 10m 42s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2357563\\ 17m 24s \\ 18m 26s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1040216\\ 6m 44s \\ 6m 57s \end{tabular}&                    
+\begin{tabular}[c]{@{}l@{}}1030570\\ 6m 28s \\ 6m 38s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1034643\\ 6m 18s \\ 6m 30s \end{tabular}\\ \hline
+\textbf{FM9}       &
+\begin{tabular}[c]{@{}l@{}}1043447\\ 13m 02s \\ 12m 39s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1367958\\ 18m 46s \\ 18m 27s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1367627\\ 11m 49s \\ 11m 48s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2357561\\ 19m 52s \\ 20m 20s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1044944\\ 7m 48s \\ 7m 42s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1033898\\ 7m 31s \\ 7m 24s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1039542\\ 7m 18s \\ 7m 16s \end{tabular}\\ \hline
+\textbf{B5}     & 
+\begin{tabular}[c]{@{}l@{}}1025369\\ 3m 55s \\ 4m 32s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1347516\\ 5m 43s \\ 6m 36s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1347221\\ 5m 47s \\ 6m 41s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2336603\\ 9m 40s \\ 11m 34s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1025601\\ 3m 37s \\ 4m 21s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1022496\\ 3m 28s \\ 4m 05s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1021005\\ 3m 18s \\ 3m 57s \end{tabular}\\ \hline
+\textbf{B6}       &
+\begin{tabular}[c]{@{}l@{}}1017280\\ 4m 32s \\ 5m 03s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1331768\\ 6m 37s \\ 7m 23s \end{tabular}&      
+\begin{tabular}[c]{@{}l@{}}1331499\\ 6m 39s \\ 7m 24s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2295518\\ 11m 04s \\ 12m 53s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1019168\\ 4m 17s \\ 4m 50s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1011298\\ 4m 03s \\ 4m 34s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1012638\\ 3m 53s \\ 4m 26s \end{tabular}\\ \hline
+\textbf{B7}       &
+\begin{tabular}[c]{@{}l@{}}1026642\\ 5m 17s \\ 5m 39s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1338470\\ 7m 38s \\ 8m 12s \end{tabular}&    
+\begin{tabular}[c]{@{}l@{}}1338182\\ 7m 36s \\ 8m 09s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}2303394\\ 12m 59s \\ 14m 25s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1026813\\ 5m 00s \\ 5m 24s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1018636\\ 4m 46s \\ 5m 08s \end{tabular}&
+\begin{tabular}[c]{@{}l@{}}1020386\\ 4m 34s \\ 4m 59s \end{tabular}\\ \hline
+
+\end{tabular}
+\end{table}
+
 
 
 \end{document}
