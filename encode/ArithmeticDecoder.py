@@ -197,7 +197,28 @@ class arith_code_dec_k:
                 probs.append(max(prob))
 
         if len(probs) == 0: ret_val = 0
-        else: ret_val = probs.index(max(probs))
+        else: ret_val = len(probs) - probs[::-1].index(max(probs)) - 1
+
+        #print('return', ret_val)
+
+        return ret_val # returns starting index in context array
+
+    def estimate_context_length_v3(self, lib):
+        probs = [] #longest context to shortest context
+        #print(lib)
+        for i in lib:
+            if i == None:
+                probs.append(0)
+            elif len(i[0])==0:
+                probs.append(0)
+            else:
+                den = float(sum(i[1]))
+                prob = [(float(x) / den) for x in i[1]]
+                #prob[-1] = 0
+                probs.append(max(prob))
+
+        if len(probs) == 0: ret_val = 0
+        else: ret_val = len(probs) - probs[::-1].index(max(probs)) - 1
 
         #print('return', ret_val)
 

@@ -227,6 +227,9 @@ class count_mng_dynamic(count_mng):
     def update_alphabet(self, char):
         self.alphabet[-1] = char
 
+    def get_len_alphabet(self, context=[]):
+        return len(self.alphabet)
+
 #---------------------------------------------------   
 from encode.ByteManagement import byte_mng_dec
 
@@ -289,6 +292,13 @@ class count_dynamic_k_child(count_mng_dynamic):
         else:
             new_child = count_dynamic_k_child(self.k - 1, self.new_mode)
         self.children.append(new_child)
+
+    def get_len_alphabet(self, context):
+        if len(context) < 1:
+            return len(self.alphabet)
+        if context[0] not in self.alphabet:
+            return 0
+        return self.children[self.alphabet.index(context[0])].get_len_alphabet(context[1:])
 
 # ------------------------------------------
 
@@ -356,6 +366,10 @@ class count_dynamic_k(count_dynamic_k_child):
             else:
                 for i in range(len(ret_arr)): 
                     self.increment_count(context[i:], char)
+                i = len(ret_arr)
+                while len(context) >= i and self.get_len_alphabet(context[i:]) <= 1: # need to get alphabet length of child, not this one
+                    self.increment_count(context[i:], char)
+                    i += 1
 
         return ret_arr
 
@@ -398,5 +412,18 @@ class count_dynamic_k(count_dynamic_k_child):
             if no_counts > len(context) + 1: print("context length error")
             for i in range(no_counts):
                 self.increment_count(context[i:], char)
+            i = no_counts
+            while len(context) >= i and self.get_len_alphabet(context[i:]) <= 1: # need to get alphabet length of child, not this one
+                self.increment_count(context[i:], char)
+                i += 1
         #print(context, char)
         return char
+    
+    def get_len_alphabet(self, context):
+        if len(context) < 1 and self.alphabet_final == -1:
+            return len(self.alphabet)
+        if len(context) < 1:
+            return self.alphabet_final
+        if context[0] not in self.alphabet:
+            return 0
+        return self.children[self.alphabet.index(context[0])].get_len_alphabet(context[1:])
