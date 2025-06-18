@@ -1,0 +1,15 @@
+First choice (v1) for full context:
+k = 6, text2
+1388465
+vs 1331768 bytes with update exclusion
+
+
+
+first choice v2 var 0
+2851636
+
+first choice v2 var 1
+2367140
+
+first choice v2 var 2
+2815064
